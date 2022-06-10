@@ -176,6 +176,7 @@ def validate(val_loader, model, criterion):
             test_num = 5000 
     else:
         test_num = len(val_loader)
+    # test_num = 200
     assert test_num % args.batch_size_val == 0    
     iter_num = 0
     total_time = 0

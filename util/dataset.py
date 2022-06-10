@@ -29,6 +29,7 @@ def make_dataset(split=0, data_root=None, data_list=None, sub_list=None):
     #    filtered_item.append(item)      
     # which means the mask will be downsampled to 1/32 of the original size and the valid area should be larger than 2, 
     # therefore the area in original size should be accordingly larger than 2 * 32 * 32    
+    # sub_list = [1]
     image_label_list = []  
     list_read = open(data_list).readlines()
     print("Processing data...".format(sub_list))
@@ -128,15 +129,23 @@ class SemData(Dataset):
                 elif self.split == 0:
                     self.sub_list = list(range(21, 81)) 
                     self.sub_val_list = list(range(1, 21))    
-
+        # todo pyt this under a flag
+        self.sub_list = [1]
+        self.sub_val_list = [2]
         print('sub_list: ', self.sub_list)
         print('sub_val_list: ', self.sub_val_list)    
 
         if self.mode == 'train':
-            self.data_list, self.sub_class_file_list = make_dataset(split, data_root, data_list, self.sub_list)
+            self.data_list, self.sub_class_file_list = make_dataset(split,
+                                                                    data_root,
+                                                                    data_list,
+                                                                    self.sub_list)
             assert len(self.sub_class_file_list.keys()) == len(self.sub_list)
         elif self.mode == 'val':
-            self.data_list, self.sub_class_file_list = make_dataset(split, data_root, data_list, self.sub_val_list)
+            self.data_list, self.sub_class_file_list = make_dataset(split,
+                                                                    data_root,
+                                                                    data_list,
+                                                                    self.sub_val_list)
             assert len(self.sub_class_file_list.keys()) == len(self.sub_val_list) 
         self.transform = transform
 

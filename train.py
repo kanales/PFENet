@@ -130,7 +130,6 @@ def main_worker(gpu, ngpus_per_node, argss):
     logger.info("=> creating model ...")
     logger.info("Classes: {}".format(args.classes))
     logger.info(model)
-    print(args)
 
     model = torch.nn.DataParallel(model.cuda())
 
@@ -147,10 +146,11 @@ def main_worker(gpu, ngpus_per_node, argss):
         if os.path.isfile(args.resume):
             logger.info("=> loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume, map_location=lambda storage, loc: storage.cuda())
-            args.start_epoch = checkpoint['epoch']
+            args.start_epoch = checkpoint.get('epoch', 0)
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
-            logger.info("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
+            logger.info("=> loaded checkpoint '{}' (epoch {})".format(args.resume,
+                                                                args.start_epoch))
         else:
             logger.info("=> no checkpoint found at '{}'".format(args.resume))
 
@@ -171,12 +171,22 @@ def main_worker(gpu, ngpus_per_node, argss):
         transform.ToTensor(),
         transform.Normalize(mean=mean, std=std)]
     train_transform = transform.Compose(train_transform)
-    train_data = dataset.SemData(split=args.split, shot=args.shot, data_root=args.data_root, \
-                                data_list=args.train_list, transform=train_transform, mode='train', \
-                                use_coco=args.use_coco, use_split_coco=args.use_split_coco)
+    train_data = dataset.SemData(split=args.split, shot=args.shot,
+                                 data_root=args.data_root,
+                                 data_list=args.train_list,
+                                 transform=train_transform, mode='train',
+                                 use_coco=args.use_coco,
+                                 use_split_coco=args.use_split_coco)
 
     train_sampler = None
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, shuffle=(train_sampler is None), num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
+    print('>>>>>>', args.data_root, args.train_list)
+    train_loader = torch.utils.data.DataLoader(train_data,
+                                               batch_size=args.batch_size,
+                                               shuffle=(train_sampler is None),
+                                               num_workers=args.workers,
+                                               pin_memory=True,
+                                               sampler=train_sampler,
+                                               drop_last=True)
     if args.evaluate:
         if args.resized_val:
             val_transform = transform.Compose([
@@ -188,11 +198,22 @@ def main_worker(gpu, ngpus_per_node, argss):
                 transform.test_Resize(size=args.val_size),
                 transform.ToTensor(),
                 transform.Normalize(mean=mean, std=std)])           
-        val_data = dataset.SemData(split=args.split, shot=args.shot, data_root=args.data_root, \
-                                data_list=args.val_list, transform=val_transform, mode='val', \
-                                use_coco=args.use_coco, use_split_coco=args.use_split_coco)
+
+        print('val loader:', args.data_root, args.val_list)
+        val_data = dataset.SemData(split=args.split, shot=args.shot,
+                                   data_root=args.data_root,
+                                   data_list=args.val_list,
+                                   transform=val_transform, mode='val',
+                                   use_coco=args.use_coco,
+                                   use_split_coco=args.use_split_coco)
         val_sampler = None
-        val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.batch_size_val, shuffle=False, num_workers=args.workers, pin_memory=True, sampler=val_sampler)
+        val_loader = torch.utils.data.DataLoader(val_data,
+                                                 batch_size=args.batch_size_val,
+                                                 shuffle=False,
+                                                 num_workers=args.workers,
+                                                 pin_memory=True,
+                                                 sampler=val_sampler)
+        print('val loader len', len(val_loader))
 
     max_iou = 0.
     filename = 'PFENet.pth'
@@ -363,8 +384,9 @@ def validate(val_loader, model, criterion):
             test_num = 20000
         else:
             test_num = 5000 
-    else:
-        test_num = len(val_loader)
+    # else:
+    test_num = len(val_loader)
+    print('test_num', test_num)
     assert test_num % args.batch_size_val == 0    
     iter_num = 0
     total_time = 0
@@ -396,7 +418,10 @@ def validate(val_loader, model, criterion):
 
             output = output.max(1)[1]
 
-            intersection, union, new_target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
+            intersection, union, new_target = intersectionAndUnionGPU(output,
+                                                                      target,
+                                                                      args.classes,
+                                                                      args.ignore_label)
             intersection, union, target, new_target = intersection.cpu().numpy(), union.cpu().numpy(), target.cpu().numpy(), new_target.cpu().numpy()
             intersection_meter.update(intersection), union_meter.update(union), target_meter.update(new_target)
                 
